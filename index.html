@@ -44,7 +44,7 @@ td.move { background: #90ee90; }
 
 /* 後手（上・左側） */
 .white-hand {
-  background-image: url("komiya_2p_komadai.PNG");
+  background-image: url("komiya_2p_komadai.png");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -52,7 +52,7 @@ td.move { background: #90ee90; }
 
 /* 先手（下・右側） */
 .black-hand {
-  background-image: url("komiya_1p_komadai.PNG");
+  background-image: url("komiya_1p_komadai.png");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -178,6 +178,9 @@ button { padding: 6px 12px; font-size: 14px; cursor: pointer; }
 
 
 <script>
+
+let cpuEnabled = true;      // true = CPU戦
+let cpuSide = "white";     // CPUは後手（white）
 
 let bgm;
 
@@ -503,6 +506,11 @@ function movePieceWithSelected(sel, x, y) {
   // 手番交代
   turn = turn === "black" ? "white" : "black";
   showKifu();
+
+  // CPUの手番なら自動で指す
+  if (cpuEnabled && turn === cpuSide && !gameOver) {
+    setTimeout(cpuMove, 500);  // 0.5秒後にCPUが指す
+  }
 
   // ★ ここから追加（500手引き分け）
   moveCount++;
@@ -1069,6 +1077,58 @@ render();
 showKifu();
 
 
+/* ========= CPU関数 ========= */
+
+function cpuMove() {
+  if (gameOver) return;
+
+  const player = cpuSide;
+  const allMoves = [];
+
+  // 盤上の駒の合法手
+  for (let y = 0; y < 9; y++) {
+    for (let x = 0; x < 9; x++) {
+      const p = boardState[y][x];
+      if (!p) continue;
+      const isWhite = p === p.toLowerCase();
+      if ((player === "black" && !isWhite) || (player === "white" && isWhite)) {
+        const moves = getLegalMoves(x, y);
+        moves.forEach(m => {
+          allMoves.push({ fromHand: false, x0: x, y0: y, x1: m.x, y1: m.y });
+        });
+      }
+    }
+  }
+
+  // 持ち駒打ち
+  const hand = hands[player];
+  for (let i = 0; i < hand.length; i++) {
+    const piece = hand[i];
+    const drops = getLegalDrops(player, piece);
+    drops.forEach(m => {
+      allMoves.push({ fromHand: true, player, index: i, x1: m.x, y1: m.y });
+    });
+  }
+
+  if (allMoves.length === 0) return;
+
+  // ランダムに1手選ぶ
+  const move = allMoves[Math.floor(Math.random() * allMoves.length)];
+
+  if (move.fromHand) {
+    selected = { fromHand: true, player: player, index: move.index };
+    movePieceWithSelected(selected, move.x1, move.y1);
+  } else {
+    selected = { x: move.x0, y: move.y0, fromHand: false };
+    movePieceWithSelected(selected, move.x1, move.y1);
+  }
+
+  selected = null;
+  legalMoves = [];
+  render();
+}
+
+
 </script>
 
 <audio id="bgm" src="natsu2.mp3" loop></audio>
@@ -1079,4 +1139,3 @@ showKifu();
 
 </body>
 </html>
-
